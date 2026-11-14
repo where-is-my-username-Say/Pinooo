@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1b171b">
+<title>Open Piano</title>
+<meta name="description" content="A public piano you can play together, live.">
+<style>
+:root{color-scheme:dark;--ink:#f5eee6;--muted:#bcb0b6;--accent:#ffc496;--line:#ffffff1d;--panel:#292229;--remote:#a790f2}
+*{box-sizing:border-box}body{margin:0;min-height:100svh;background:radial-gradient(ellipse at 74% 3%,#34252f 0%,transparent 50%),#1b171b;color:var(--ink);font-family:"DM Sans",system-ui,sans-serif}button,input{font:inherit}button{color:inherit}button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+main{width:min(1120px,calc(100% - 52px));margin:auto;padding:clamp(28px,7vh,82px) 0 22px}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:clamp(24px,5vh,52px)}h1{margin:0;font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:clamp(49px,8.5vw,112px);line-height:.9;letter-spacing:-.065em}header p{color:var(--muted);margin:15px 0 0;font-size:clamp(13px,2vw,17px)}
+.status{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:50px;padding:9px 13px;font-size:13px;white-space:nowrap}.dot{width:7px;height:7px;border-radius:50%;background:#a5908e}.status.live .dot{background:#a9dbb1;box-shadow:0 0 12px #a9dbb16a}
+.instrument{background:var(--panel);border:1px solid #55434f;border-radius:22px;padding:clamp(8px,1.6vw,20px);box-shadow:0 25px 60px #09060963}
+.controls{display:flex;gap:12px 20px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:2px 0 14px}
+.control-group{display:flex;align-items:center;gap:8px}.octave{font-variant-numeric:tabular-nums;text-align:center;min-width:44px;color:var(--muted);font-size:13px}.button{min-height:36px;min-width:36px;border:1px solid var(--line);border-radius:9px;background:#382d36;padding:5px 11px;cursor:pointer;font-size:14px}.button:disabled{opacity:.35;cursor:default}.button:hover:not(:disabled){border-color:#a78696}.sound{color:#2b1d1f;background:var(--accent);font-weight:650}.sound[aria-pressed=true]{color:var(--ink);background:#382d36}.volume{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}.volume input{accent-color:var(--accent);width:86px;cursor:pointer}.effect[aria-pressed=true]{border-color:#ddaa89;background:#6a4944;color:#fff2e9}
+.keys{height:clamp(180px,37vh,350px);position:relative;display:flex;gap:2px;background:#171318;border-radius:8px;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+.piano-key{border:0;appearance:none;-webkit-tap-highlight-color:transparent;touch-action:none;cursor:pointer;display:flex;align-items:center;justify-content:end;flex-direction:column;gap:4px;padding:0 0 13px;font-size:12px;font-weight:650;min-width:0;position:relative}.white{flex:1;background:linear-gradient(#e4d8ce,#fff5e5 28%,#f4e4d3);color:#594450;border-bottom:6px solid #c5ada0;border-radius:2px 2px 6px 6px}.black{position:absolute;top:0;z-index:1;width:var(--black-width);height:62%;transform:translateX(-50%);color:#e0d0dc;background:linear-gradient(#27202a,#382d3c);border:1px solid #201823;border-bottom:6px solid #18131c;border-radius:0 0 6px 6px;padding-bottom:8px;box-shadow:0 4px 8px #1c152a60}
+.piano-key.remote{background:var(--remote);color:#271d36;border-bottom-color:#7461a3}.piano-key.local{background:var(--accent);color:#41282b;border-bottom-color:#b87e65}.piano-key:focus-visible{outline-offset:-4px;z-index:2}.shortcut{font-size:10px;opacity:.75}.black .note{font-size:10px}
+footer{display:flex;justify-content:space-between;align-items:center;gap:10px 20px;flex-wrap:wrap;padding:17px 2px 0;color:var(--muted);font-size:13px}.legend{display:flex;gap:14px}.legend span{display:inline-flex;align-items:center;gap:6px}.swatch{width:9px;height:9px;border-radius:3px;background:var(--accent)}.swatch.other{background:var(--remote)}
+@media(max-width:620px){main{width:calc(100% - 24px);padding-top:29px}header{gap:6px;margin-bottom:24px;flex-wrap:wrap}header p{margin-top:8px}.status{padding:7px 10px;font-size:12px}.controls{gap:8px}.volume input{width:52px}.keys{height:clamp(195px,40svh,320px)}.shortcut{display:none}.instrument{border-radius:15px}}
+@media(max-height:480px) and (orientation:landscape){main{padding:10px 0}header{align-items:center;margin-bottom:8px}h1{font-size:38px;line-height:1}header p{display:none}.controls{padding-bottom:6px}.keys{height:clamp(105px,calc(100svh - 140px),240px)}footer{padding-top:5px}.piano-key{padding-bottom:5px}}
+</style>
+</head>
+<body>
+<main>
+<header><div><h1>Open Piano</h1><p>One piano. Everyone plays together.</p></div><div class="status" id="status" role="status"><span class="dot"></span><span id="presence">Connecting…</span></div></header>
+<section class="instrument" aria-label="Piano">
+<div class="controls">
+<div class="control-group" aria-label="Octave">
+<button class="button" id="lower" type="button" aria-label="Lower octave">−</button>
+<span class="octave" id="octave" aria-live="polite"></span>
+<button class="button" id="higher" type="button" aria-label="Raise octave">+</button>
+</div>
+<button class="button" id="landscape" type="button" aria-label="Enter landscape fullscreen">Landscape fullscreen</button>
+<div class="control-group">
+<label class="volume">Volume <input id="volume" type="range" min="0" max="100" value="72"></label>
+<button class="button effect" id="reverb" type="button" aria-pressed="true">Reverb on</button>
+<button class="button sound" id="sound" type="button" aria-pressed="false">Enable sound</button>
+</div>
+</div>
+<div class="keys" id="keys" aria-label="Piano keys"></div>
+</section>
+<footer><span id="hint">Tap multiple keys to play a chord.</span><div class="legend"><span><i class="swatch"></i>You</span><span><i class="swatch other"></i>Other players</span></div></footer>
+</main>
+<script>
+'use strict';
+const relay = 'wss://open-piano-live.balochnajool.workers.dev/live';
+const ui = Object.fromEntries(['keys','sound','volume','reverb','landscape','status','presence','octave','lower','higher','hint'].map(id => [id, document.getElementById(id)]));
+const noteNames = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+const shortcuts = ['A','W','S','E','D','F','T','G','Y','H','U','J','K','O','L','P',';'];
+const compact = matchMedia('(max-width: 620px)');
+const touch = matchMedia('(pointer: coarse)');
+const keyElements = new Map();
+const inputs = new Map();
+const localCounts = new Map();
+const remoteNotes = new Map();
+const remoteCounts = new Map();
+const voices = new Map();
+const pendingLocal = new Map();
+let octave = 4;
+let audio, master, wet, reverb, socket, self, reconnect, heartbeat;
+let retries = 0;
+let muted = false;
+let previewSound = false;
+let reverbEnabled = true;
+let nextVoice = 0;
+function updateVolume() {
+  const running = audio?.state === 'running';
+  if (master) master.gain.setTargetAtTime(muted ? 0 : Number(ui.volume.value) / 100 * .55, audio.currentTime, .015);
+  ui.sound.textContent = muted ? 'Unmute' : (running ? 'Mute' : 'Enable sound');
+  ui.sound.setAttribute('aria-pressed', String(running && !muted));
+}
+function audioStateChanged() {
+  updateVolume();
+  if (audio.state !== 'running' || muted) return;
+  for (const [note, released] of pendingLocal) {
+    if (!released || performance.now() - released < 2000) {
+      playVoice(note, 1);
+    }
+  }
+  pendingLocal.clear();
+  if (previewSound) {
+    previewSound = false;
+    playVoice((octave + 1) * 12, 1);
+  }
+}
+function unlockAudio() {
+  if (muted) return;
+  try {
+    if (!audio) {
+      const Context = window.AudioContext || window.webkitAudioContext;
+      if (!Context) {
+        ui.sound.textContent = 'Sound unavailable';
+        return;
+      }
+      audio = new Context();
+      master = audio.createGain();
+      const compressor = audio.createDynamicsCompressor();
+      compressor.threshold.value = -18;
+      compressor.ratio.value = 3;
+      master.connect(compressor).connect(audio.destination);
+      reverb = audio.createConvolver();
+      reverb.normalize = false;
+      const length = Math.floor(audio.sampleRate * 1.6);
+      const impulse = audio.createBuffer(2, length, audio.sampleRate);
+      let seed = 7391;
+      for (let channel = 0; channel < 2; channel++) {
+        const samples = impulse.getChannelData(channel);
+        for (let i = 0; i < length; i++) {
+          seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+          const decay = Math.exp(-4.4 * i / audio.sampleRate);
+          samples[i] = i < audio.sampleRate * .012 ? 0 : ((seed / 4294967295) * 2 - 1) * decay * .025;
+        }
+      }
+      reverb.buffer = impulse;
+      wet = audio.createGain();
+      wet.gain.value = reverbEnabled ? .23 : 0;
+      reverb.connect(wet).connect(master);
+      audio.addEventListener('statechange', audioStateChanged);
+      updateVolume();
+    }
+    if (audio.state === 'running') audioStateChanged();
+    else audio.resume().then(audioStateChanged, updateVolume);
+  } catch (error) {
+    console.error('Could not start piano audio', error);
+    ui.sound.textContent = 'Retry sound';
+  }
+}
+function playVoice(note, strength) {
+  if (audio?.state !== 'running' || muted) return;
+  if (voices.size >= 40) stopVoice(voices.keys().next().value);
+  const now = audio.currentTime;
+  const frequency = 440 * 2 ** ((note - 69) / 12);
+  const duration = Math.max(2.4, 4.3 - (note - 48) * .034);
+  const gain = audio.createGain();
+  const filter = audio.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = Math.min(9500, frequency * 9 + 1100);
+  filter.Q.value = .25;
+  gain.gain.setValueAtTime(.0001, now);
+  gain.gain.exponentialRampToValueAtTime(strength * .24, now + .008);
+  gain.gain.exponentialRampToValueAtTime(strength * .12, now + .22);
+  gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
+  filter.connect(gain);
+  gain.connect(master);
+  filter.connect(reverb);
+  const oscillators = [
+    [1, 1], [1.0022, .62], [2.006, .22], [3.012, .075]
+  ].map(([multiple, level]) => {
+    const oscillator = audio.createOscillator();
+    const partial = audio.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.value = frequency * multiple;
+    partial.gain.value = level;
+    oscillator.connect(partial).connect(filter);
+    oscillator.start(now);
+    oscillator.stop(now + duration + .05);
+    return oscillator;
+  });
+  const id = ++nextVoice;
+  voices.set(id, {gain, filter, oscillators});
+  oscillators[0].onended = () => {
+    gain.disconnect();
+    filter.disconnect();
+    voices.delete(id);
+  };
+}
+function stopVoice(id) {
+  const voice = voices.get(id);
+  if (!voice) return;
+  voices.delete(id);
+  const now = audio.currentTime;
+  voice.gain.gain.cancelScheduledValues(now);
+  voice.gain.gain.setTargetAtTime(.0001, now, .025);
+  for (const oscillator of voice.oscillators) oscillator.stop(now + .12);
+}
+function paint(note) {
+  const key = keyElements.get(note);
+  if (!key) return;
+  key.classList.toggle('local', localCounts.has(note));
+  key.classList.toggle('remote', remoteCounts.has(note));
+}
+function send(note, on) {
+  if (socket?.readyState === WebSocket.OPEN && self) socket.send(JSON.stringify({note,on}));
+}
+function release(input) {
+  const note = inputs.get(input);
+  if (note === undefined) return;
+  inputs.delete(input);
+  const count = localCounts.get(note) - 1;
+  if (count) localCounts.set(note, count);
+  else {
+    localCounts.delete(note);
+    send(note, false);
+    paint(note);
+    if (pendingLocal.has(note)) pendingLocal.set(note, performance.now());
+  }
+}
+function press(input, note) {
+  if (inputs.get(input) === note) return;
+  release(input);
+  if (note === undefined) return;
+  inputs.set(input, note);
+  const count = localCounts.get(note) || 0;
+  localCounts.set(note, count + 1);
+  if (!count) {
+    send(note, true);
+    paint(note);
+    if (audio?.state === 'running') playVoice(note, 1);
+    else if (!muted) pendingLocal.set(note, 0);
+  }
+}
+function releaseAll() {
+  for (const input of inputs.keys()) release(input);
+  pendingLocal.clear();
+}
+function render() {
+  releaseAll();
+  ui.keys.replaceChildren();
+  keyElements.clear();
+  const semitones = compact.matches ? 13 : 25;
+  const whites = compact.matches ? 8 : 15;
+  const base = (octave + 1) * 12;
+  let whiteIndex = 0;
+  ui.keys.style.setProperty('--black-width', 61 / whites + '%');
+  for (let offset = 0; offset < semitones; offset++) {
+    const note = base + offset;
+    const name = noteNames[note % 12];
+    const black = name.includes('♯');
+    const key = document.createElement('button');
+    key.type = 'button';
+    key.className = 'piano-key ' + (black ? 'black' : 'white');
+    key.dataset.note = note;
+    const label = name + (Math.floor(note / 12) - 1);
+    key.setAttribute('aria-label', label);
+    key.innerHTML = '<span class="note"></span>' + (shortcuts[offset] ? '<span class="shortcut"></span>' : '');
+    key.firstChild.textContent = label;
+    if (shortcuts[offset]) key.lastChild.textContent = shortcuts[offset];
+    if (black) key.style.left = 100 * whiteIndex / whites + '%';
+    else whiteIndex++;
+    ui.keys.append(key);
+    keyElements.set(note, key);
+    paint(note);
+  }
+  ui.octave.textContent = 'C' + octave + '–C' + (octave + (compact.matches ? 1 : 2));
+  ui.lower.disabled = octave <= 2;
+  ui.higher.disabled = octave >= 5;
+  ui.hint.textContent = touch.matches ? 'Touch several keys to play a chord.' : 'Play with your keyboard or mouse. Hold several keys for chords.';
+}
+function noteAt(x, y) {
+  const key = document.elementFromPoint(x, y)?.closest('.piano-key');
+  return key && ui.keys.contains(key) ? Number(key.dataset.note) : undefined;
+}
+ui.keys.addEventListener('pointerdown', event => {
+  if (event.button !== 0) return;
+  const note = noteAt(event.clientX, event.clientY);
+  if (note === undefined) return;
+  event.preventDefault();
+  ui.keys.setPointerCapture(event.pointerId);
+  if (event.pointerType === 'mouse' || navigator.userActivation?.hasBeenActive) unlockAudio();
+  press('pointer:' + event.pointerId, note);
+});
+ui.keys.addEventListener('pointermove', event => {
+  if (ui.keys.hasPointerCapture(event.pointerId)) press('pointer:' + event.pointerId, noteAt(event.clientX, event.clientY));
+});
+ui.keys.addEventListener('pointerup', event => {
+  if (event.pointerType !== 'mouse' && audio?.state !== 'running') unlockAudio();
+  release('pointer:' + event.pointerId);
+});
+ui.keys.addEventListener('touchend', () => {
+  if (audio?.state !== 'running') unlockAudio();
+}, {passive: true});
+for (const type of ['pointercancel','lostpointercapture']) {
+  ui.keys.addEventListener(type, event => release('pointer:' + event.pointerId));
+}
+ui.keys.addEventListener('contextmenu', event => event.preventDefault());
+ui.keys.addEventListener('click', event => {
+  const key = event.target.closest('.piano-key');
+  if (!key || event.detail !== 0) return;
+  const input = Symbol();
+  unlockAudio();
+  press(input, Number(key.dataset.note));
+  setTimeout(() => release(input), 210);
+});
+const keyboardCodes = ['KeyA','KeyW','KeyS','KeyE','KeyD','KeyF','KeyT','KeyG','KeyY','KeyH','KeyU','KeyJ','KeyK','KeyO','KeyL','KeyP','Semicolon'];
+window.addEventListener('keydown', event => {
+  if (event.ctrlKey || event.altKey || event.metaKey || event.target.matches?.('input,textarea,[contenteditable=true]')) return;
+  const index = keyboardCodes.indexOf(event.code);
+  if (index < 0 || (compact.matches && index > 12)) return;
+  event.preventDefault();
+  if (!event.repeat) {
+    unlockAudio();
+    press(event.code, (octave + 1) * 12 + index);
+  }
+});
+window.addEventListener('keyup', event => release(event.code));
+window.addEventListener('blur', releaseAll);
+document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAll(); });
+window.addEventListener('pagehide', releaseAll);
+compact.addEventListener('change', render);
+touch.addEventListener('change', render);
+ui.lower.onclick = () => { octave--; render(); };
+ui.higher.onclick = () => { octave++; render(); };
+ui.volume.oninput = updateVolume;
+document.addEventListener('fullscreenchange', () => {
+  const active = !!document.fullscreenElement;
+  ui.landscape.textContent = active ? 'Exit fullscreen' : 'Landscape fullscreen';
+  ui.landscape.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter landscape fullscreen');
+  if (!active) {
+    try { screen.orientation?.unlock?.(); } catch {}
+  }
+});
+ui.landscape.onclick = async () => {
+  if (document.fullscreenElement) {
+    await document.exitFullscreen();
+    return;
+  }
+  if (!document.documentElement.requestFullscreen) {
+    ui.hint.textContent = 'This browser does not support fullscreen. Open the page in Chrome.';
+    return;
+  }
+  try {
+    await document.documentElement.requestFullscreen();
+    if (screen.orientation?.lock) {
+      try {
+        await screen.orientation.lock('landscape');
+      } catch {
+        ui.hint.textContent = 'Fullscreen is on. Rotate your phone to landscape.';
+      }
+    } else {
+      ui.hint.textContent = 'Fullscreen is on. Rotate your phone to landscape.';
+    }
+  } catch {
+    ui.hint.textContent = 'Fullscreen was blocked here. Open the page in Chrome.';
+  }
+};
+ui.reverb.onclick = () => {
+  reverbEnabled = !reverbEnabled;
+  ui.reverb.textContent = reverbEnabled ? 'Reverb on' : 'Reverb off';
+  ui.reverb.setAttribute('aria-pressed', String(reverbEnabled));
+  if (wet) wet.gain.setTargetAtTime(reverbEnabled ? .23 : 0, audio.currentTime, .04);
+};
+ui.sound.onclick = () => {
+  if (audio?.state === 'running' && !muted) {
+    muted = true;
+    previewSound = false;
+    pendingLocal.clear();
+    updateVolume();
+  } else {
+    muted = false;
+    previewSound = true;
+    unlockAudio();
+  }
+};
+function remote(player, note, on, audible = true) {
+  const id = player + ':' + note;
+  if (on === remoteNotes.has(id)) return;
+  if (on) {
+    remoteNotes.set(id, {player,note});
+    remoteCounts.set(note, (remoteCounts.get(note) || 0) + 1);
+    if (audible) playVoice(note, .78);
+  } else {
+    remoteNotes.delete(id);
+    const count = remoteCounts.get(note) - 1;
+    if (count) remoteCounts.set(note, count);
+    else remoteCounts.delete(note);
+  }
+  paint(note);
+}
+function presence(count) {
+  ui.status.classList.toggle('live', count > 0);
+  ui.presence.textContent = count ? count + (count === 1 ? ' player online' : ' players online') : 'Offline · reconnecting';
+}
+function connect() {
+  const connection = new WebSocket(relay);
+  socket = connection;
+  let lastAlive = Date.now();
+  const timeout = setTimeout(() => connection.close(), 9500);
+  connection.onmessage = ({data}) => {
+    lastAlive = Date.now();
+    if (data === 'pong') return;
+    const packet = JSON.parse(data);
+    if (packet.type === 'hello') {
+      clearTimeout(timeout);
+      self = packet.id;
+      retries = 0;
+      presence(packet.count);
+      for (const [id, notes] of packet.players) for (const note of notes) remote(id, note, true, false);
+      for (const note of localCounts.keys()) send(note, true);
+      heartbeat = setInterval(() => {
+        if (Date.now() - lastAlive > 50000) connection.close();
+        else if (connection.readyState === WebSocket.OPEN) connection.send('ping');
+      }, 20000);
+    } else if (packet.type === 'presence') presence(packet.count);
+    else if (packet.type === 'note' && packet.id !== self) remote(packet.id, packet.note, packet.on);
+    else if (packet.type === 'leave') {
+      for (const {player,note} of remoteNotes.values()) if (player === packet.id) remote(player, note, false);
+      presence(packet.count);
+    } else if (packet.type === 'full') {
+      ui.presence.textContent = 'Room full · retrying';
+    }
+  };
+  connection.onerror = () => connection.close();
+  connection.onclose = ({code}) => {
+    clearTimeout(timeout);
+    clearInterval(heartbeat);
+    self = null;
+    for (const {player,note} of remoteNotes.values()) remote(player, note, false);
+    presence(0);
+    if (code === 1013) ui.presence.textContent = 'Room full · retrying';
+    reconnect = setTimeout(connect, Math.min(15000, 850 * 2 ** Math.min(retries++, 5)));
+  };
+}
+window.addEventListener('online', () => {
+  if (socket?.readyState !== WebSocket.CLOSED) return;
+  clearTimeout(reconnect);
+  connect();
+});
+render();
+connect();
+</script>
+</body>
+</html>
